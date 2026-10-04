@@ -1,5 +1,8 @@
 import OpenAI from "openai";
 import { createClient } from "@supabase/supabase-js";
+import { recordAuditEvent } from "../lib/audit";
+import { captureProductEvent } from "../lib/integrations/telemetry";
+import { recordUsage } from "../lib/usage";
 import type { MarketingWorkflowInput } from "./workflows";
 
 function getAdminClient() {
@@ -29,6 +32,14 @@ export async function executeMarketingRun(input: MarketingWorkflowInput) {
     model,
   }).eq("id", input.runId).eq("workspace_id", input.workspaceId);
 
+  await recordAuditEvent({
+    workspaceId: input.workspaceId,
+    actorUserId: input.userId,
+    action: "ai_run_started",
+    entityType: "ai_run",
+    entityId: input.runId,
+  });
+
   try {
     const response = await openai.responses.create({
       model,
@@ -55,6 +66,30 @@ export async function executeMarketingRun(input: MarketingWorkflowInput) {
       finished_at: new Date().toISOString(),
     }).eq("id", input.runId).eq("workspace_id", input.workspaceId);
 
+    await recordUsage({
+      workspaceId: input.workspaceId,
+      metricCode: "ai.run",
+      quantity: 1,
+      source: "openai",
+      referenceId: input.runId,
+      metadata: { workflow: "marketingWorkflow", model },
+    });
+
+    await recordAuditEvent({
+      workspaceId: input.workspaceId,
+      actorUserId: input.userId,
+      action: "ai_run_completed",
+      entityType: "ai_run",
+      entityId: input.runId,
+      metadata: { model, responseId: response.id },
+    });
+
+    await captureProductEvent({
+      distinctId: input.userId,
+      event: "ai run completed",
+      properties: { workspace_id: input.workspaceId, workflow: "marketingWorkflow" },
+    });
+
     return output;
   } catch (error) {
     const detail = error instanceof Error ? { message: error.message } : { message: "Unknown workflow failure" };
@@ -63,6 +98,16 @@ export async function executeMarketingRun(input: MarketingWorkflowInput) {
       error: detail,
       finished_at: new Date().toISOString(),
     }).eq("id", input.runId).eq("workspace_id", input.workspaceId);
+
+    await recordAuditEvent({
+      workspaceId: input.workspaceId,
+      actorUserId: input.userId,
+      action: "ai_run_failed",
+      entityType: "ai_run",
+      entityId: input.runId,
+      metadata: detail,
+    });
+
     throw error;
   }
 }
