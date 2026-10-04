@@ -26,13 +26,20 @@ export async function signInAction(formData: FormData) {
 export async function signUpAction(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
 
-  if (!email || password.length < 8) {
-    redirect("/login?error=Use%20a%20valid%20email%20and%20an%208%2B%20character%20password");
+  if (!email || password.length < 8 || !siteUrl) {
+    redirect("/login?error=Use%20a%20valid%20email%20and%20configure%20NEXT_PUBLIC_SITE_URL");
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signUp({ email, password });
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: siteUrl + "/auth/callback",
+    },
+  });
 
   if (error) {
     redirect("/login?error=Unable%20to%20create%20account");
