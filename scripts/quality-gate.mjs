@@ -16,7 +16,7 @@ const required = [
   "supabase/migrations/20261004104209_digital_marketer_p3_marketing_core.sql",
   "supabase/migrations/20261004104302_digital_marketer_p4_saas_operations.sql",
   "supabase/migrations/20261004104309_digital_marketer_p5_creative_core.sql",
-  "supabase/migrations/20261004104602_digital_marketer_performance_indexes.sql",
+  "supabase/migrations/20261004104600_digital_marketer_performance_indexes.sql",
   "temporal/workflows.ts",
   "temporal/activities.ts",
   "temporal/client.ts",
