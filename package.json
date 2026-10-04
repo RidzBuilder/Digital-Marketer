@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "quality-gate": "node scripts/quality-gate.mjs",
     "worker": "tsx temporal/worker.ts",
     "temporal:dev": "tsx temporal/worker.ts"
   },
