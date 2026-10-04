@@ -1,5 +1,6 @@
 import { Client, Connection } from "@temporalio/client";
 import { marketingWorkflow, type MarketingWorkflowInput } from "./workflows";
+import { resolveTaskQueue } from "./task-queues";
 
 let clientPromise: Promise<Client> | undefined;
 
@@ -17,10 +18,9 @@ async function getClient() {
 
 export async function startMarketingWorkflow(input: MarketingWorkflowInput) {
   const client = await getClient();
-  const taskQueue = process.env.TEMPORAL_TASK_QUEUE ?? "digital-marketer";
 
   return client.workflow.start(marketingWorkflow, {
-    taskQueue,
+    taskQueue: resolveTaskQueue(input.workspaceId),
     workflowId: "marketing-" + input.runId,
     args: [input],
   });
