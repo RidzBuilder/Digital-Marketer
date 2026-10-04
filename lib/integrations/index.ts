@@ -3,3 +3,4 @@ export * from "./windsor";
 export * from "./posthog";
 export * from "./amplitude";
 export * from "./resend";
+export * from "./firecrawl";
