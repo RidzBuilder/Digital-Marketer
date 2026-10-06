@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import type { Json } from "@/types/database";
 import { FirecrawlProvider } from "@/lib/integrations/firecrawl";
 
 export const runtime = "nodejs";
@@ -45,7 +46,7 @@ export async function POST(request: Request) {
     content: result.markdown ?? "",
     provider: result.provider,
     verification_status: "unverified",
-    metadata: result.metadata ?? {},
+    metadata: (result.metadata ?? {}) as Json,
   }).select("id,source_url,source_title,verification_status").single();
 
   if (error) return NextResponse.json({ error: "Unable to persist research document" }, { status: 400 });
