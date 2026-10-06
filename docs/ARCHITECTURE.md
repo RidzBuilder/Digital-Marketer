@@ -7,7 +7,7 @@ ChatGPT Project is the orchestration/control plane. Production execution remains
 - GitHub: canonical source control
 - Vercel: web runtime/deployment
 - Supabase: Postgres/Auth/Storage
-- Temporal: durable workflows
+- Vercel Workflows: durable workflows
 - OpenAI: model/agent execution
 - Firecrawl: research acquisition
 - PostHog + Amplitude: analytics
@@ -25,7 +25,9 @@ Every tenant-owned record has workspace_id. RLS enforces authenticated workspace
 
 ## Execution lineage
 
-AI request → ai_runs → Temporal workflow → activity → provider → output → audit_events + usage_ledger + telemetry.
+AI request → ai_runs → Vercel Workflow → step → provider → output → audit_events + usage_ledger + telemetry.
+
+Workflow retries are safe because terminal usage and audit writes are keyed by stable run identifiers.
 
 ## Research lineage
 

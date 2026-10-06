@@ -40,20 +40,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unable to create AI run" }, { status: 400 });
   }
 
+  let workflowRun;
   try {
-    const workflowRun = await start(marketingWorkflow, [{
+    workflowRun = await start(marketingWorkflow, [{
       runId: run.id,
       workspaceId: run.workspace_id,
       userId: authData.user.id,
       prompt,
       model: body?.model,
     }]);
-
-    return NextResponse.json({
-      runId: run.id,
-      workflowRunId: workflowRun.runId,
-      status: "queued",
-    }, { status: 202 });
   } catch {
     await supabase.from("ai_runs").update({
       status: "failed",
@@ -66,4 +61,23 @@ export async function POST(request: Request) {
       runId: run.id,
     }, { status: 503 });
   }
+
+  const { error: correlationError } = await supabase.from("ai_runs").update({
+    metadata: { workflowRunId: workflowRun.runId },
+  }).eq("id", run.id).eq("workspace_id", run.workspace_id);
+
+  if (correlationError) {
+    return NextResponse.json({
+      error: "Workflow started but correlation persistence failed",
+      runId: run.id,
+      workflowRunId: workflowRun.runId,
+      status: "queued",
+    }, { status: 202 });
+  }
+
+  return NextResponse.json({
+    runId: run.id,
+    workflowRunId: workflowRun.runId,
+    status: "queued",
+  }, { status: 202 });
 }

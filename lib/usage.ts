@@ -16,12 +16,17 @@ export async function recordUsage(input: {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  return supabase.from("usage_ledger").insert({
+  const { error } = await supabase.from("usage_ledger").upsert({
     workspace_id: input.workspaceId,
     metric_code: input.metricCode,
     quantity: input.quantity,
     source: input.source,
     reference_id: input.referenceId ?? null,
     metadata: input.metadata ?? {},
+  }, {
+    onConflict: "workspace_id,metric_code,reference_id",
+    ignoreDuplicates: true,
   });
+
+  if (error) throw new Error("Unable to persist usage entry: " + error.message);
 }

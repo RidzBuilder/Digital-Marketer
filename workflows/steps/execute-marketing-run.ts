@@ -19,33 +19,114 @@ function getOpenAI() {
   return new OpenAI({ apiKey: key });
 }
 
+async function finalizeCompletedRun(
+  supabase: ReturnType<typeof getAdminClient>,
+  input: MarketingWorkflowInput,
+  output: MarketingRunOutput,
+  model: string,
+  stepId: string,
+) {
+  await recordUsage({
+    workspaceId: input.workspaceId,
+    metricCode: "ai.run",
+    quantity: 1,
+    source: "openai",
+    referenceId: input.runId,
+    metadata: {
+      workflow: "marketingWorkflow",
+      workflowEngine: "vercel-workflows",
+      model,
+      stepId,
+      responseId: output.response_id,
+    },
+  });
+
+  await recordAuditEvent({
+    workspaceId: input.workspaceId,
+    actorUserId: input.userId,
+    action: "ai_run_completed",
+    entityType: "ai_run",
+    entityId: input.runId,
+    requestId: "ai-run:" + input.runId + ":completed",
+    metadata: {
+      model,
+      responseId: output.response_id,
+      workflowEngine: "vercel-workflows",
+      stepId,
+    },
+  });
+}
+
+async function markCompleted(
+  supabase: ReturnType<typeof getAdminClient>,
+  input: MarketingWorkflowInput,
+  output: MarketingRunOutput,
+) {
+  const { error } = await supabase.from("ai_runs").update({
+    status: "completed",
+    output,
+    finished_at: new Date().toISOString(),
+  }).eq("id", input.runId).eq("workspace_id", input.workspaceId);
+
+  if (error) throw new Error("Unable to persist completed AI run: " + error.message);
+}
+
 export async function executeMarketingRun(input: MarketingWorkflowInput): Promise<MarketingRunOutput> {
   "use step";
 
   const { stepId } = getStepMetadata();
   const supabase = getAdminClient();
+
+  const { data: existing, error: existingError } = await supabase
+    .from("ai_runs")
+    .select("status,output,model")
+    .eq("id", input.runId)
+    .eq("workspace_id", input.workspaceId)
+    .maybeSingle();
+
+  if (existingError) {
+    throw new Error("Unable to load AI run state: " + existingError.message);
+  }
+
+  if (existing?.output) {
+    const output = existing.output as MarketingRunOutput;
+    const model = existing.model ?? input.model ?? "unknown";
+
+    await finalizeCompletedRun(supabase, input, output, model, stepId);
+
+    if (existing.status !== "completed") {
+      await markCompleted(supabase, input, output);
+    }
+
+    await captureProductEvent({
+      distinctId: input.userId,
+      event: "ai run completed",
+      idempotencyKey: "ai-run:" + input.runId + ":completed",
+      properties: {
+        workspace_id: input.workspaceId,
+        workflow: "marketingWorkflow",
+        workflow_engine: "vercel-workflows",
+      },
+    });
+
+    return output;
+  }
+
   const openai = getOpenAI();
   const model = input.model ?? process.env.OPENAI_MODEL;
 
   if (!model) throw new Error("OPENAI_MODEL must be configured.");
 
-  const { data: existing } = await supabase
-    .from("ai_runs")
-    .select("status,output")
-    .eq("id", input.runId)
-    .eq("workspace_id", input.workspaceId)
-    .maybeSingle();
-
-  if (existing?.status === "completed" && existing.output) {
-    return existing.output as MarketingRunOutput;
-  }
-
-  await supabase.from("ai_runs").update({
+  const { error: runningError } = await supabase.from("ai_runs").update({
     status: "running",
     started_at: new Date().toISOString(),
     provider: "openai",
     model,
   }).eq("id", input.runId).eq("workspace_id", input.workspaceId);
+
+  if (runningError) {
+    throw new Error("Unable to mark AI run as running: " + runningError.message);
+  }
 
   await recordAuditEvent({
     workspaceId: input.workspaceId,
@@ -53,6 +134,7 @@ export async function executeMarketingRun(input: MarketingWorkflowInput): Promis
     action: "ai_run_started",
     entityType: "ai_run",
     entityId: input.runId,
+    requestId: "ai-run:" + input.runId + ":started",
     metadata: { workflowEngine: "vercel-workflows", stepId },
   });
 
@@ -75,33 +157,21 @@ export async function executeMarketingRun(input: MarketingWorkflowInput): Promis
     text: response.output_text,
   };
 
-  await supabase.from("ai_runs").update({
-    status: "completed",
+  const { error: outputError } = await supabase.from("ai_runs").update({
     output,
-    finished_at: new Date().toISOString(),
   }).eq("id", input.runId).eq("workspace_id", input.workspaceId);
 
-  await recordUsage({
-    workspaceId: input.workspaceId,
-    metricCode: "ai.run",
-    quantity: 1,
-    source: "openai",
-    referenceId: input.runId,
-    metadata: { workflow: "marketingWorkflow", workflowEngine: "vercel-workflows", model, stepId },
-  });
+  if (outputError) {
+    throw new Error("Unable to persist AI run output: " + outputError.message);
+  }
 
-  await recordAuditEvent({
-    workspaceId: input.workspaceId,
-    actorUserId: input.userId,
-    action: "ai_run_completed",
-    entityType: "ai_run",
-    entityId: input.runId,
-    metadata: { model, responseId: response.id, workflowEngine: "vercel-workflows", stepId },
-  });
+  await finalizeCompletedRun(supabase, input, output, model, stepId);
+  await markCompleted(supabase, input, output);
 
   await captureProductEvent({
     distinctId: input.userId,
     event: "ai run completed",
+    idempotencyKey: "ai-run:" + input.runId + ":completed",
     properties: {
       workspace_id: input.workspaceId,
       workflow: "marketingWorkflow",

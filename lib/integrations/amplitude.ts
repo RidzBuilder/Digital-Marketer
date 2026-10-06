@@ -25,6 +25,7 @@ export class AmplitudeProvider implements TelemetryProvider {
           events: [{
             user_id: event.distinctId,
             event_type: event.event,
+            ...(event.idempotencyKey ? { insert_id: event.idempotencyKey } : {}),
             event_properties: event.properties ?? {},
           }],
         }),

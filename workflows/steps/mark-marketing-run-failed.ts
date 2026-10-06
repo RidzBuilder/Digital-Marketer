@@ -17,11 +17,15 @@ export async function markMarketingRunFailed(input: FailureInput) {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  await supabase.from("ai_runs").update({
+  const { error } = await supabase.from("ai_runs").update({
     status: "failed",
     error: input.error,
     finished_at: new Date().toISOString(),
   }).eq("id", input.runId).eq("workspace_id", input.workspaceId);
+
+  if (error) {
+    throw new Error("Unable to persist failed AI run: " + error.message);
+  }
 
   await recordAuditEvent({
     workspaceId: input.workspaceId,
@@ -29,8 +33,9 @@ export async function markMarketingRunFailed(input: FailureInput) {
     action: "ai_run_failed",
     entityType: "ai_run",
     entityId: input.runId,
+    requestId: "ai-run:" + input.runId + ":failed",
     metadata: { workflowEngine: "vercel-workflows", error: input.error },
   });
 }
 
-markMarketingRunFailed.maxRetries = 0;
+markMarketingRunFailed.maxRetries = 3;
