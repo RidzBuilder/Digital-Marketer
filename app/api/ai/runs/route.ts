@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { start } from "workflow/api";
 import { createClient } from "@/lib/supabase/server";
-import { startMarketingWorkflow } from "@/temporal/client";
+import { marketingWorkflow } from "@/workflows/marketing";
 
 export const runtime = "nodejs";
 
@@ -12,7 +13,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json().catch(() => null) as { workspaceId?: string; prompt?: string; model?: string } | null;
+  const body = await request.json().catch(() => null) as {
+    workspaceId?: string;
+    prompt?: string;
+    model?: string;
+  } | null;
+
   const workspaceId = body?.workspaceId?.trim();
   const prompt = body?.prompt?.trim();
 
@@ -24,7 +30,7 @@ export async function POST(request: Request) {
     workspace_id: workspaceId,
     initiated_by: authData.user.id,
     workflow_name: "marketingWorkflow",
-    workflow_version: "1.0.0",
+    workflow_version: "2.0.0",
     status: "queued",
     input: { prompt },
     model: body?.model ?? null,
@@ -35,22 +41,29 @@ export async function POST(request: Request) {
   }
 
   try {
-    await startMarketingWorkflow({
+    const workflowRun = await start(marketingWorkflow, [{
       runId: run.id,
       workspaceId: run.workspace_id,
       userId: authData.user.id,
       prompt,
       model: body?.model,
-    });
+    }]);
+
+    return NextResponse.json({
+      runId: run.id,
+      workflowRunId: workflowRun.runId,
+      status: "queued",
+    }, { status: 202 });
   } catch {
     await supabase.from("ai_runs").update({
       status: "failed",
-      error: { message: "Unable to start Temporal workflow" },
+      error: { message: "Unable to start durable marketing workflow" },
       finished_at: new Date().toISOString(),
     }).eq("id", run.id).eq("workspace_id", run.workspace_id);
 
-    return NextResponse.json({ error: "Temporal workflow could not be started", runId: run.id }, { status: 503 });
+    return NextResponse.json({
+      error: "Durable workflow could not be started",
+      runId: run.id,
+    }, { status: 503 });
   }
-
-  return NextResponse.json({ runId: run.id, status: "queued" }, { status: 202 });
 }
