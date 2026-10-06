@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { createProductAction } from "../core-actions";
+import { createProductAction } from "../../core-actions";
 
 export default async function NewProductPage() {
   const supabase = await createClient();

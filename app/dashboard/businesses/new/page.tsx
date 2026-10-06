@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { createBusinessAction } from "../core-actions";
+import { createBusinessAction } from "../../core-actions";
 
 export default async function NewBusinessPage() {
   const supabase = await createClient();
