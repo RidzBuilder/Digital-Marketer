@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { createPublishableKeySafeFetch } from "@/lib/supabase/public-key-fetch";
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -12,6 +13,9 @@ export async function proxy(request: NextRequest) {
   }
 
   const supabase = createServerClient(url, key, {
+    global: {
+      fetch: createPublishableKeySafeFetch(key),
+    },
     cookies: {
       getAll() {
         return request.cookies.getAll();
