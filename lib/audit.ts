@@ -17,7 +17,7 @@ export async function recordAuditEvent(input: {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  return supabase.from("audit_events").insert({
+  const { error } = await supabase.from("audit_events").upsert({
     workspace_id: input.workspaceId ?? null,
     actor_user_id: input.actorUserId ?? null,
     action: input.action,
@@ -25,5 +25,10 @@ export async function recordAuditEvent(input: {
     entity_id: input.entityId ?? null,
     request_id: input.requestId ?? null,
     metadata: input.metadata ?? {},
+  }, {
+    onConflict: "workspace_id,request_id",
+    ignoreDuplicates: true,
   });
+
+  if (error) throw new Error("Unable to persist audit event: " + error.message);
 }
