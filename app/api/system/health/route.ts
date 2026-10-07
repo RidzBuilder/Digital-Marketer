@@ -20,8 +20,7 @@ export async function GET() {
     ok: true,
     service: "digital-marketer",
     phases: ["P0", "P1", "P2", "P3", "P4", "P5"],
-    providers,
-    temporalConfigured: Boolean(process.env.TEMPORAL_ADDRESS),
+    workflowEngine: "vercel-workflows",
     openAIConfigured: Boolean(process.env.OPENAI_API_KEY && process.env.OPENAI_MODEL),
   });
 }
