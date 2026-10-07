@@ -17,7 +17,7 @@ export class HiggsfieldProvider implements CreativeProvider {
     return { provider: "higgsfield", configured: Boolean(process.env.HIGGSFIELD_API_KEY) };
   }
 
-  async createJob(_request: CreativeJobRequest) {
+  async createJob(_request: CreativeJobRequest): Promise<{ provider: string; providerJobId?: string; raw?: unknown }> {
     throw new Error("Higgsfield runtime adapter is pending authenticated provider API configuration.");
   }
 }
