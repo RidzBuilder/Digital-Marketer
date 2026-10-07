@@ -15,7 +15,7 @@ export class PostHogProvider implements TelemetryProvider {
     const host = process.env.NEXT_PUBLIC_POSTHOG_HOST;
     if (!apiKey || !host) throw new Error("PostHog environment is not configured.");
 
-    const response = await fetch(host.replace(//$/, "") + "/i/v0/e/", {
+    const response = await fetch(host.replace(/\/$/, "") + "/i/v0/e/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
