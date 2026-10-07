@@ -13,21 +13,25 @@ export interface CreativeProvider {
 }
 
 export class HiggsfieldProvider implements CreativeProvider {
-  async health() {
+  async health(): Promise<ProviderHealth> {
     return { provider: "higgsfield", configured: Boolean(process.env.HIGGSFIELD_API_KEY) };
   }
 
-  async createJob(_request: CreativeJobRequest): Promise<{ provider: string; providerJobId?: string; raw?: unknown }> {
+  async createJob(
+    _request: CreativeJobRequest,
+  ): Promise<{ provider: string; providerJobId?: string; raw?: unknown }> {
     throw new Error("Higgsfield runtime adapter is pending authenticated provider API configuration.");
   }
 }
 
 export class CanvaProvider implements CreativeProvider {
-  async health() {
+  async health(): Promise<ProviderHealth> {
     return { provider: "canva", configured: Boolean(process.env.CANVA_API_KEY) };
   }
 
-  async createJob(_request: CreativeJobRequest): Promise<{ provider: string; providerJobId?: string; raw?: unknown }> {
+  async createJob(
+    _request: CreativeJobRequest,
+  ): Promise<{ provider: string; providerJobId?: string; raw?: unknown }> {
     throw new Error("Canva runtime adapter is pending authenticated provider API configuration.");
   }
 }
