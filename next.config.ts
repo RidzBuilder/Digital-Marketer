@@ -1,6 +1,9 @@
-import type { NextConfig } from "next";
 import { withWorkflow } from "workflow/next";
+import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {};
+const nextConfig: NextConfig = {
+  poweredByHeader: false,
+  reactStrictMode: true,
+};
 
 export default withWorkflow(nextConfig);
