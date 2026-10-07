@@ -5,9 +5,9 @@
 ChatGPT Project is the orchestration/control plane. Production execution remains on external infrastructure.
 
 - GitHub: canonical source control
-- Vercel: web runtime/deployment + durable workflows
+- Vercel: web runtime/deployment
 - Supabase: Postgres/Auth/Storage
-- Vercel Workflow: durable workflow execution, retries, persistence, and long-running orchestration
+- Vercel Workflows: durable workflows
 - OpenAI: model/agent execution
 - Firecrawl: research acquisition
 - PostHog + Amplitude: analytics
@@ -17,8 +17,6 @@ ChatGPT Project is the orchestration/control plane. Production execution remains
 - Figma/Higgsfield/Canva: design/creative providers
 - TENTOR-HOS: reusable content-production engine
 
-Temporal is deprecated and removed from the production execution path. Workflow domain logic remains provider-abstracted so another durable workflow backend can be introduced later without changing business logic.
-
 ## Tenant model
 
 Organization/tenant → workspace → business → brand → product/campaign/content.
@@ -27,7 +25,9 @@ Every tenant-owned record has workspace_id. RLS enforces authenticated workspace
 
 ## Execution lineage
 
-AI request → ai_runs → Vercel Workflow → workflow step → provider → output → audit_events + usage_ledger + telemetry.
+AI request → ai_runs → Vercel Workflow → step → provider → output → audit_events + usage_ledger + telemetry.
+
+Workflow retries are safe because terminal usage and audit writes are keyed by stable run identifiers.
 
 ## Research lineage
 
