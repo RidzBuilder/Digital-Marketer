@@ -42,7 +42,26 @@ export async function signUpAction(formData: FormData) {
   });
 
   if (error) {
-    redirect("/login?error=Unable%20to%20create%20account");
+    const diagnosticCode = String(
+      (error as { code?: string }).code
+      ?? error.name
+      ?? "unknown_auth_error"
+    );
+    const diagnosticStatus = String(
+      (error as { status?: number }).status
+      ?? "unknown_status"
+    );
+
+    console.error("[auth.signup]", {
+      code: diagnosticCode,
+      status: diagnosticStatus,
+    });
+
+    redirect(
+      `/login?error=${encodeURIComponent(
+        `Unable to create account [${diagnosticCode}; status=${diagnosticStatus}]`
+      )}`
+    );
   }
 
   redirect("/login?message=Check%20your%20email%20to%20confirm%20your%20account");
