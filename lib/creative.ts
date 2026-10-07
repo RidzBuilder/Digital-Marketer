@@ -27,7 +27,7 @@ export class CanvaProvider implements CreativeProvider {
     return { provider: "canva", configured: Boolean(process.env.CANVA_API_KEY) };
   }
 
-  async createJob(_request: CreativeJobRequest) {
+  async createJob(_request: CreativeJobRequest): Promise<{ provider: string; providerJobId?: string; raw?: unknown }> {
     throw new Error("Canva runtime adapter is pending authenticated provider API configuration.");
   }
 }
