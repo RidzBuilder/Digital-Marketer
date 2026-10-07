@@ -22,7 +22,10 @@ export class PostHogProvider implements TelemetryProvider {
         api_key: apiKey,
         distinct_id: event.distinctId,
         event: event.event,
-        properties: event.properties ?? {},
+        properties: {
+          ...(event.properties ?? {}),
+          ...(event.idempotencyKey ? { "$insert_id": event.idempotencyKey } : {}),
+        },
       }),
     });
 

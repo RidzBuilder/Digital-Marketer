@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "quality-gate": "node scripts/quality-gate.mjs"
+    "quality-gate": "node scripts/quality-gate.mjs",
+    "workflow:web": "workflow web"
   },
   "engines": { "node": ">=22.14.0" },
   "dependencies": {

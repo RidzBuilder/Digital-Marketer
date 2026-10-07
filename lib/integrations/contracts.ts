@@ -37,6 +37,7 @@ export interface MarketingDataProvider {
 export type TelemetryEvent = {
   distinctId: string;
   event: string;
+  idempotencyKey?: string;
   properties?: Record<string, unknown>;
 };
 
