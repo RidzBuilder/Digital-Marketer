@@ -1,5 +1,5 @@
-import { start } from "workflow/api";
 import { NextResponse } from "next/server";
+import { start } from "workflow/api";
 import { createClient } from "@/lib/supabase/server";
 import { marketingWorkflow } from "@/workflows/marketing";
 
@@ -13,7 +13,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json().catch(() => null) as { workspaceId?: string; prompt?: string; model?: string } | null;
+  const body = await request.json().catch(() => null) as {
+    workspaceId?: string;
+    prompt?: string;
+    model?: string;
+  } | null;
+
   const workspaceId = body?.workspaceId?.trim();
   const prompt = body?.prompt?.trim();
 
@@ -35,8 +40,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unable to create AI run" }, { status: 400 });
   }
 
+  let workflowRun;
   try {
-    await start(marketingWorkflow, [{
+    workflowRun = await start(marketingWorkflow, [{
       runId: run.id,
       workspaceId: run.workspace_id,
       userId: authData.user.id,
@@ -46,12 +52,32 @@ export async function POST(request: Request) {
   } catch {
     await supabase.from("ai_runs").update({
       status: "failed",
-      error: { message: "Unable to start Vercel Workflow" },
+      error: { message: "Unable to start durable marketing workflow" },
       finished_at: new Date().toISOString(),
     }).eq("id", run.id).eq("workspace_id", run.workspace_id);
 
-    return NextResponse.json({ error: "Vercel Workflow could not be started", runId: run.id }, { status: 503 });
+    return NextResponse.json({
+      error: "Durable workflow could not be started",
+      runId: run.id,
+    }, { status: 503 });
   }
 
-  return NextResponse.json({ runId: run.id, status: "queued" }, { status: 202 });
+  const { error: correlationError } = await supabase.from("ai_runs").update({
+    metadata: { workflowRunId: workflowRun.runId },
+  }).eq("id", run.id).eq("workspace_id", run.workspace_id);
+
+  if (correlationError) {
+    return NextResponse.json({
+      error: "Workflow started but correlation persistence failed",
+      runId: run.id,
+      workflowRunId: workflowRun.runId,
+      status: "queued",
+    }, { status: 202 });
+  }
+
+  return NextResponse.json({
+    runId: run.id,
+    workflowRunId: workflowRun.runId,
+    status: "queued",
+  }, { status: 202 });
 }
