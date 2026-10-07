@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     content: result.markdown ?? "",
     provider: result.provider,
     verification_status: "unverified",
-    metadata: result.metadata ?? {},
+    metadata: result.metadata ? JSON.parse(JSON.stringify(result.metadata)) : {},
   }).select("id,source_url,source_title,verification_status").single();
 
   if (error) return NextResponse.json({ error: "Unable to persist research document" }, { status: 400 });
