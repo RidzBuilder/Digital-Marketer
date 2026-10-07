@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import type { Database } from "@/types/database";
 import { cookies } from "next/headers";
+import { createPublishableKeySafeFetch } from "./public-key-fetch";
 
 export async function createClient() {
   const cookieStore = await cookies();
@@ -12,6 +13,9 @@ export async function createClient() {
   }
 
   return createServerClient<Database>(url, key, {
+    global: {
+      fetch: createPublishableKeySafeFetch(key),
+    },
     cookies: {
       getAll() {
         return cookieStore.getAll();
