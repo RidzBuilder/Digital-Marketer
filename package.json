@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "test:idempotency": "node --import tsx --test tests/idempotency.test.ts",
     "quality-gate": "node scripts/quality-gate.mjs",
     "workflow:web": "workflow web"
   },
