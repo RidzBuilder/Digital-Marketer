@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { start } from "workflow/api";
 import { createClient } from "@/lib/supabase/server";
+import { idempotentRequestMatches, isUniqueViolation } from "@/lib/ai/idempotency";
 import { marketingWorkflow } from "@/workflows/marketing";
 
 export const runtime = "nodejs";
@@ -11,10 +12,6 @@ type CreateRunBody = {
   model?: string;
   idempotencyKey?: string;
 };
-
-function isUniqueViolation(error: { code?: string } | null): boolean {
-  return error?.code === "23505";
-}
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -63,8 +60,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Unable to resolve idempotent AI run" }, { status: 500 });
       }
 
-      const existingInput = existing.input as { prompt?: string } | null;
-      if (existingInput?.prompt !== prompt || (existing.model ?? undefined) !== model) {
+      if (!idempotentRequestMatches(existing, { prompt, model })) {
         return NextResponse.json({
           error: "Idempotency-Key was already used with a different request",
           runId: existing.id,
